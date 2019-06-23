@@ -1,2 +1,4 @@
+*.bk
+*.pyc
 /target
-**/*.rs.bk
+__pycache__
