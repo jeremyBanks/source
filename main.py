@@ -7,13 +7,10 @@ import cards
 
 def main():
     board = magic.Board()
-    board.deck.extend([cards.chimney_imp] * 50)
-    board.deck.extend([cards.island] * 35)
-    board.deck.extend([cards.sol_ring] * 8)
-    shuffle(board.deck)
-
-    for n in range(7):
-        board.draw()
+    board.shuffle_into_deck([cards.chimney_imp] * 50)
+    board.shuffle_into_deck([cards.island] * 35)
+    board.shuffle_into_deck([cards.sol_ring] * 8)
+    board.reset()
 
     print("initial hand: {}".format(board.hand))
 
