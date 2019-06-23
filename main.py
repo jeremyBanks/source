@@ -3,7 +3,7 @@ import cards
 
 
 def main():
-    print("hello, world!")
+    print("hello, {}!".format(cards.ChimneyImp()))
 
 
 if __name__ == "__main__":
