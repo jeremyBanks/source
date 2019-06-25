@@ -1,18 +1,43 @@
 #!/usr/bin/env python
-from random import shuffle
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, replace, field
+from enum import Enum
+from typing import FrozenSet
 
-import magic
-import cards
+
+class Type(Enum):
+    """The supertypes that each card can have.
+    """
+
+    basic = "Basic"
+    land = "Land"
+
+
+@dataclass(frozen=True)
+class Card:
+    """A physical card or token, as printed, with no associated state.
+    """
+
+    name: str
+    types: FrozenSet[Type] = frozenset()
+    is_token: bool = False
+
+    def as_token(self):
+        """Returns a token copy of this card.
+        """
+
+        if self.is_token:
+            return self
+        else:
+            return replace(self, is_token=True)
 
 
 def main():
-    board = magic.Board()
-    board.shuffle_into_deck([cards.chimney_imp] * 50)
-    board.shuffle_into_deck([cards.island] * 35)
-    board.shuffle_into_deck([cards.sol_ring] * 8)
-    board.reset()
+    island_card = Card(name="Island", types=frozenset({Type.basic, Type.land}))
+    island_token = island_card.as_token()
 
-    print("initial hand: {}".format(board.hand))
+    print(island_card)
+    print(island_token)
 
 
 if __name__ == "__main__":

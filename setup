@@ -5,8 +5,9 @@ if ! hash pyenv 2>/dev/null; then
     echo "pyenv required, but not found.";
     echo;
     echo "run 'curl https://pyenv.run | bash' or check out https://github.com/pyenv/pyenv.";
+    echo "Don't forget to follow the instructions at the end to update your shell profile."
     echo;
-    echo "you may also want to 'sudo apt-get update; sudo apt-get install "
+    echo "You may also want to 'sudo apt-get update; sudo apt-get install "
     echo "--no-install-recommends make build-essential libssl-dev zlib1g-dev libbz2-dev ";
     echo "libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev xz-utils tk-dev ";
     echo "libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev' to make sure common Python ";
@@ -15,21 +16,28 @@ if ! hash pyenv 2>/dev/null; then
     exit 1;
 fi
 
-printf "\033[0;32m\$\033[0;37m \033[1;30m# Ensuring required version of Python is installed.\033[0m\n";
+printf "\033[0;32m\$\033[0m \033[1;30m# Ensuring required version of Python is installed.\033[0m\n";
 pyenv install --skip-existing "$(pyenv local)";
 
 PYTHON="$(pyenv which python)";
 PIP="$(pyenv which pip)";
 
-printf "\033[0;32m\$\033[0;37m \033[1;30m# Ensuring required PyPi packages are installed.\033[0m\n";
+printf "\033[0;32m\$\033[0m \033[1;30m# Self-updating pip.\033[0m\n";
+"$PIP" install --upgrade pip --quiet;
+
+printf "\033[0;32m\$\033[0m \033[1;30m# Ensuring expected PyPi packages are installed.\033[0m\n";
 "$PIP" install -r requirements.txt --disable-pip-version-check --quiet;
+"$PIP" freeze > requirements.txt;
 
 BLACK="$(pyenv which black)";
 MYPY="$(pyenv which mypy)";
 
-printf "\033[0;32m\$\033[0;37m \033[1;30m# Re-formatting our code for the heck of it \033[0m\n";
-"$BLACK" . --quiet || echo "Black code formatting failed! 😲 Continuing anyway.";
+printf "\033[0;32m\$\033[0m \033[1;30m# Auto-formatting our code.\033[0m\n";
+"$BLACK" . --quiet || printf "\033[0;31mBlack code formatting failed! 😲 You may have a syntax error. Continuing anyway.\n";
 
-printf "\033[0;32m\$\033[0;37m \033[1;30m# Running our code. (You can just do this directly from now on.)\033[0m\n";
-printf "\033[0;32m\$\033[0;37m python main.py\033[1;30m # or ./main.py\033[0m\n";
+printf "\033[0;32m\$\033[0m \033[1;30m# Type-checking our code.\033[0m\n";
+"$MYPY" . || printf "\033[0;31mMyPy type checking failed! 😢 Continuing anyway.\n";
+
+printf "\033[0;32m\$\033[0m \033[1;30m# Running our code. (You can just do this directly from now on.)\033[0m\n";
+printf "\033[0;32m\$\033[0m python main.py\033[1;30m # or ./main.py\033[0m\n";
 "$PYTHON" main.py;
