@@ -28,8 +28,10 @@ sorcery = Type.sorcery
 instant = Type.instant
 token = Type.token
 
+
 class Ability(ABC):
     NotImplemented
+
 
 class ManaAbility(Ability):
     NotImplemented
