@@ -1,62 +1,55 @@
 #!/usr/bin/env python
-import os
 import asyncio
+import json
+import os
+from pprint import pprint
+from typing import FrozenSet
+import re
+import sys
 
-import discord
+import aiohttp
 
-PLAYING_MAGIC = discord.Game(name="Magic: the Gathering")
+"""
+https://scryfall.com/docs/api/cards/search
+https://discordapp.com/developers/docs/resources/channel#get-channel-messages
+https://discordapp.com/developers/docs/topics/gateway
+"""
 
 
-class MagicHandsClient(discord.Client):
-    channel_id_whitelist = {
-        # private mtg #test-1
-        305717890357919745,
-        # arcbound testing #main
-        595358313642721281,
-    }
+class Card:
+    def __init__(self, data):
+        self._data = data
+        self.slug = re.sub("([^a-z0-9]|s$|^the |^a )+", "", data["name"].lower())
 
-    async def on_ready(self):
-        """What do we do first once we're connected to Discord?
-        """
-
-        print("Logged on as {0}!".format(self.user))
-
-        await self.change_presence(activity=PLAYING_MAGIC)
-
-    async def on_message(self, message):
-        if message.channel.id not in self.channel_id_whitelist:
-            # Ignore direct messages and other channels.
-            return
-
-        if message.author == self.user:
-            # Don't respond to our own messages.
-            return
-
-        await message.channel.trigger_typing()
-        await asyncio.sleep(1)
-        sent = await message.channel.send(
-            "{.name}'s `Island.dec` <a:b1nzy:392938283556143104>\n"
-            "• 56 Island\n"
-            "• 4 Snow-Covered Island".format(message.author)
+        self.name = data["name"]
+        self.cost = data.get("mana_cost") or None
+        self.colors = set(data.get("colors") or [])
+        self.legal_in = set(
+            key for (key, value) in data["legalities"].items() if value == "legal"
         )
-        print(sent)
+        self.type = data["type_line"]
+        self.body = data.get("oracle_text") or ""
 
-    async def on_message_edit(self, message):
-        if message.channel.id not in self.channel_id_whitelist:
-            # Ignore direct messages and other channels.
-            return
-
-        if message.author == self.user:
-            # Don't respond to our own messages.
-            return
-
-        print("[edited] {0.author}: {0.content}".format(message))
+    def __repr__(self) -> str:
+        return "Card" + repr({k: v for (k, v) in self.__dict__.items() if k[:1] != "_"})
 
 
-def main():
-    client = MagicHandsClient()
-    client.run(os.environ["DISCORD_TOKEN"])
+async def main():
+    with open("scryfall-oracle-bulk.json") as f:
+        all_cards = json.load(f)
+    legal_cards = [
+        Card(card)
+        for card in all_cards
+        if any(value == "legal" for value in card["legalities"].values())
+    ]
+    del all_cards
+    legal_cards.sort(key=lambda card: card.slug)
+
+    pprint(legal_cards[0:5])
+
+    discord_bot_token = os.environ["DISCORD_TOKEN"]
+    test_channel_id = 595358313642721281
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(asyncio.get_event_loop().run_until_complete(main(*sys.argv[1:])))
