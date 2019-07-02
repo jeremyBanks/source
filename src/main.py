@@ -67,13 +67,22 @@ async def main():
             if message["content"].startswith("!card "):
                 slug = slugify(message["content"][len("!card ") :])
                 card = cards_by_slug.get(slug)
-                pprint(card)
 
-                await discord_client.post(
-                    "https://discordapp.com/api/v6/channels/{}/messages".format(
-                        test_channel_id
-                    ),
-                    data=dict(content=repr(card)),
+                print(
+                    await (
+                        await discord_client.post(
+                            "https://discordapp.com/api/v6/channels/{}/messages".format(
+                                test_channel_id
+                            ),
+                            json=dict(
+                                embed=dict(
+                                    description="**{0.name}**\n*{0.cost} {0.type}*\n{0.body}".format(
+                                        card
+                                    )
+                                )
+                            ),
+                        )
+                    ).json()
                 )
 
 
