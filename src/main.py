@@ -19,7 +19,7 @@ https://discordapp.com/developers/docs/topics/gateway
 class Card:
     def __init__(self, data):
         self._data = data
-        self.slug = re.sub("([^a-z0-9]|s$|^the |^a )+", "", data["name"].lower())
+        self.slug = slugify(data["name"])
 
         self.name = data["name"]
         self.cost = data.get("mana_cost") or None
@@ -34,6 +34,10 @@ class Card:
         return "Card" + repr({k: v for (k, v) in self.__dict__.items() if k[:1] != "_"})
 
 
+def slugify(s) -> str:
+    return re.sub("([^a-z0-9]|s$|^the |^a )+", "", s.lower())
+
+
 async def main():
     with open("scryfall-oracle-bulk.json") as f:
         all_cards = json.load(f)
@@ -44,11 +48,33 @@ async def main():
     ]
     del all_cards
     legal_cards.sort(key=lambda card: card.slug)
-
-    pprint(legal_cards[0:5])
+    cards_by_slug = {card.slug: card for card in legal_cards}
 
     discord_bot_token = os.environ["DISCORD_TOKEN"]
-    test_channel_id = 595358313642721281
+    test_channel_id = 305717890357919745 or 595358313642721281
+
+    async with aiohttp.ClientSession(
+        headers={
+            "Authorization": "Bot {}".format(discord_bot_token),
+            "User-Agent": "_@jeremy.ca",
+        }
+    ) as discord_client:
+        response = await discord_client.get(
+            "https://discordapp.com/api/v6/channels/{}/messages".format(test_channel_id)
+        )
+        data = await response.json()
+        for message in data:
+            if message["content"].startswith("!card "):
+                slug = slugify(message["content"][len("!card ") :])
+                card = cards_by_slug.get(slug)
+                pprint(card)
+
+                await discord_client.post(
+                    "https://discordapp.com/api/v6/channels/{}/messages".format(
+                        test_channel_id
+                    ),
+                    data=dict(content=repr(card)),
+                )
 
 
 if __name__ == "__main__":
