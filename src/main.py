@@ -6,6 +6,7 @@ from pprint import pprint
 from typing import FrozenSet
 import re
 import sys
+import pickle
 
 import aiohttp
 
@@ -15,6 +16,21 @@ https://discordapp.com/developers/docs/resources/channel#get-channel-messages
 https://discordapp.com/developers/docs/topics/gateway
 """
 
+class State:
+    filename = "state"
+
+    def __init__(self):
+        self.last_message_id = 0
+
+    def save(self):
+        with open(self.filename, "wb") as f:
+            pickle.dump(self, f)
+
+try:
+    with open(State.filename, "rb") as f:
+        state = pickle.load(f)
+except IOError:
+    state = State()
 
 class Card:
     def __init__(self, data):
@@ -25,7 +41,7 @@ class Card:
         self.cost = data.get("mana_cost") or None
         self.colors = set(data.get("colors") or [])
         self.legal_in = set(
-            key for (key, value) in data["legalities"].items() if value == "legal"
+            key for (key, value) in data["legalities"].items() # if value != "banned"
         )
         self.type = data["type_line"]
         self.body = data.get("oracle_text") or ""
@@ -35,7 +51,7 @@ class Card:
 
 
 def slugify(s) -> str:
-    return re.sub("([^a-z0-9]|s$|^the |^a )+", "", s.lower())
+    return re.sub("([^a-z0-9]|s+$|^the |^a )+", "", s.lower())
 
 
 async def main():
@@ -49,6 +65,7 @@ async def main():
     del all_cards
     legal_cards.sort(key=lambda card: card.slug)
     cards_by_slug = {card.slug: card for card in legal_cards}
+    print("got", len(cards_by_slug), "cards")
 
     discord_bot_token = os.environ["DISCORD_TOKEN"]
     test_channel_id = 305717890357919745 or 595358313642721281
@@ -60,13 +77,17 @@ async def main():
         }
     ) as discord_client:
         response = await discord_client.get(
-            "https://discordapp.com/api/v6/channels/{}/messages".format(test_channel_id)
+            "https://discordapp.com/api/v6/channels/{}/messages?after={}".format(test_channel_id, state.last_message_id)
         )
         data = await response.json()
         for message in data:
+            message_id = int(message['id'])
+            if message_id > state.last_message_id:
+                state.last_message_id = message_id
+
             if message["content"].startswith("!card "):
                 slug = slugify(message["content"][len("!card ") :])
-                card = cards_by_slug.get(slug)
+                card = cards_by_slug[slug]
 
                 print(
                     await (
@@ -84,6 +105,8 @@ async def main():
                         )
                     ).json()
                 )
+
+        state.save()
 
 
 if __name__ == "__main__":
