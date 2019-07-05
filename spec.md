@@ -28,6 +28,11 @@ State {
 
 Maybe publish the decks online?
 
+
+https://scryfall.com/docs/api/cards/search
+https://discordapp.com/developers/docs/resources/channel#get-channel-messages
+https://discordapp.com/developers/docs/topics/gateway
+
 ```
 !card Island
 ```

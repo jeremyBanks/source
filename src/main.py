@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import asyncio
 import json
 import os
@@ -7,71 +7,25 @@ from typing import FrozenSet
 import re
 import sys
 import pickle
-
 import aiohttp
 
-"""
-https://scryfall.com/docs/api/cards/search
-https://discordapp.com/developers/docs/resources/channel#get-channel-messages
-https://discordapp.com/developers/docs/topics/gateway
-"""
-
-
-class State:
-    filename = "state"
-
-    def __init__(self):
-        self.last_message_id = 0
-
-    def save(self):
-        with open(self.filename, "wb") as f:
-            pickle.dump(self, f)
-
-
-try:
-    with open(State.filename, "rb") as f:
-        state = pickle.load(f)
-except IOError:
-    state = State()
-
-
-class Card:
-    def __init__(self, data):
-        self._data = data
-        self.slug = slugify(data["name"])
-
-        self.name = data["name"]
-        self.cost = data.get("mana_cost") or None
-        self.colors = set(data.get("colors") or [])
-        self.legal_in = set(
-            key for (key, value) in data["legalities"].items()  # if value != "banned"
-        )
-        self.type = data["type_line"]
-        self.body = data.get("oracle_text") or ""
-
-    def __repr__(self) -> str:
-        return "Card" + repr({k: v for (k, v) in self.__dict__.items() if k[:1] != "_"})
-
-
-def slugify(s) -> str:
-    return re.sub("([^a-z0-9]|s+$|^the |^a )+", "", s.lower())
+from state import *
 
 
 async def main():
-    with open("scryfall-oracle-bulk.json") as f:
-        all_cards = json.load(f)
-    legal_cards = [
-        Card(card)
-        for card in all_cards
-        if any(value == "legal" for value in card["legalities"].values())
-    ]
-    del all_cards
-    legal_cards.sort(key=lambda card: card.slug)
-    cards_by_slug = {card.slug: card for card in legal_cards}
-    print("got", len(cards_by_slug), "cards")
-
     discord_bot_token = os.environ["DISCORD_TOKEN"]
     test_channel_id = 305717890357919745 or 595358313642721281
+
+    print("Loaded", len(state.cards_by_slug), "cards just from state.")
+
+    with open("scryfall-oracle-bulk.json") as f:
+        all_cards = json.load(f)
+    for card in all_cards:
+        if any(value != "not_legal" for value in card["legalities"].values()):
+            card = Card.from_scryfall_data(card)
+            state.cards_by_slug[card.slug] = card
+    print("Loaded", len(state.cards_by_slug), "cards including Scryfall data.")
+    state.save()
 
     async with aiohttp.ClientSession(
         headers={
@@ -115,4 +69,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.get_event_loop().run_until_complete(main(*sys.argv[1:])))
+    sys.exit(asyncio.get_event_loop().run_until_complete(main()))
