@@ -4,20 +4,38 @@ Shoved in here instead of using a database because this is just to illustrate th
 """
 from __future__ import annotations
 from typing import Dict, Set, List
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, Field
+from time import time
 from enum import Enum
 import pickle
+from random import randrange
+
+
+default = lambda f: field(default_factory=f)
+post_init = lambda: field(init=False)
+
+
+def discord_id() -> int:
+    """Generates a 64-bit Discord-like ID whose upper bits represent the current time
+    but whose lower bits are random.
+    """
+    return (int(time() * 1000 - 1420070400000) << 22) + randrange(1 << 22)
+
+
+def discord_id_time(x: int) -> float:
+    """Returns the creation timestamp in a Discord-like ID."""
+    return ((x >> 22) + 1420070400000) / 1000
 
 
 @dataclass
 class State:
     path: str
 
-    channels_by_id: Dict[int, Channel] = field(default_factory=dict)
+    channels_by_id: Dict[int, Channel] = default(dict)
 
-    users_by_id: Dict[int, User] = field(default_factory=dict)
+    users_by_id: Dict[int, User] = default(dict)
 
-    cards_by_slug: Dict[str, Card] = field(default_factory=dict)
+    cards_by_slug: Dict[str, Card] = default(dict)
 
     @classmethod
     def load_or_init(Class, path) -> State:
@@ -42,11 +60,13 @@ class State:
 @dataclass
 class Channel:
     id: int
+    last_message_id: int = 0
 
 
 @dataclass
 class Deck:
-    id: int
+    id: int = default(discord_id)
+    card_counts: Dict[Card, int] = default(dict)
 
 
 @dataclass
@@ -56,20 +76,24 @@ class User:
     # the User#1234 tag currently identifying the user
     handle: str
 
-    decks: List[Deck] = field(default_factory=list)
+    decks: List[Deck] = default(list)
 
 
 @dataclass(frozen=True)
 class Card:
     name: str
-    slug: str = field(init=False)
     mana_cost: str
     types: str
     body: str
     colors: Set[str]
+    slug: str = post_init()
+
+    def __post_init__(self):
+        return object.__setattr__(self, "slug", self.name.lower().replace(" ", ""))
 
     @classmethod
     def from_scryfall_data(Class, data) -> Card:
+        """Creates a Card using some of the data from a Scryfall API JSON card."""
         return Class(
             name=data["name"],
             mana_cost=data.get("mana_cost", ""),
@@ -77,9 +101,6 @@ class Card:
             body=data.get("oracle_text", ""),
             colors=set(data.get("colors", [])),
         )
-
-    def __post_init__(self):
-        return object.__setattr__(self, "slug", self.name.lower().replace(" ", ""))
 
 
 state = State.load_or_init("state/bin")
