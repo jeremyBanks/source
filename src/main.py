@@ -16,6 +16,7 @@ https://discordapp.com/developers/docs/resources/channel#get-channel-messages
 https://discordapp.com/developers/docs/topics/gateway
 """
 
+
 class State:
     filename = "state"
 
@@ -26,11 +27,13 @@ class State:
         with open(self.filename, "wb") as f:
             pickle.dump(self, f)
 
+
 try:
     with open(State.filename, "rb") as f:
         state = pickle.load(f)
 except IOError:
     state = State()
+
 
 class Card:
     def __init__(self, data):
@@ -41,7 +44,7 @@ class Card:
         self.cost = data.get("mana_cost") or None
         self.colors = set(data.get("colors") or [])
         self.legal_in = set(
-            key for (key, value) in data["legalities"].items() # if value != "banned"
+            key for (key, value) in data["legalities"].items()  # if value != "banned"
         )
         self.type = data["type_line"]
         self.body = data.get("oracle_text") or ""
@@ -77,11 +80,13 @@ async def main():
         }
     ) as discord_client:
         response = await discord_client.get(
-            "https://discordapp.com/api/v6/channels/{}/messages?after={}".format(test_channel_id, state.last_message_id)
+            "https://discordapp.com/api/v6/channels/{}/messages?after={}".format(
+                test_channel_id, state.last_message_id
+            )
         )
         data = await response.json()
         for message in data:
-            message_id = int(message['id'])
+            message_id = int(message["id"])
             if message_id > state.last_message_id:
                 state.last_message_id = message_id
 

@@ -1,5 +1,33 @@
 # Discord bot
 
+State {
+    Map from Channel Id to ChannelState {
+        Last Processed Message Id
+    }
+
+    Map from User Id to UserState {
+        ActiveDeck: Reference to Deck in Decks
+        Decks: Set {
+            Deck {
+                Id
+                Archived: bool /// whether this deck has been archived,
+                               /// or replaced by a modified version.
+                               /// there is no deletion.
+                Name: Option<String> /// slug of name is unique among active decks
+                Cards: Ordered Map from Reference to Card in Cards to Count (positive integer)
+            }
+        }
+    }
+
+    Set of Cards {
+        name: Name,
+        slug: Slug,
+        types: String,
+    }
+}
+
+Maybe publish the decks online?
+
 ```
 !card Island
 ```
