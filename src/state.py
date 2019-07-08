@@ -7,7 +7,8 @@ from typing import Dict, Set, List
 from dataclasses import dataclass, field, Field
 from time import time
 from enum import Enum
-import pickle
+import jsonpickle
+import json
 from random import randrange
 
 
@@ -41,20 +42,24 @@ class State:
     def load_or_init(Class, path) -> State:
         try:
             return Class.load(path)
-        except IOError:
+        except (IOError, json.JSONDecodeError):
             return Class(path=path)
 
     @classmethod
     def load(Class, path) -> State:
-        with open(path, "rb") as f:
-            self = pickle.load(f)
+        jsonpickle.set_encoder_options("json", indent=0)
+        with open(path, "rt") as f:
+            self = jsonpickle.decode(f.read(), keys=True)
         assert isinstance(self, Class)
         assert self.path == path
         return self
 
     def save(self):
-        with open(self.path, "wb") as f:
-            pickle.dump(self, f)
+        with open(self.path, "wt") as f:
+            f.write(jsonpickle.encode(self, keys=True))
+
+    def get_card(self, name) -> Card:
+        pass
 
 
 @dataclass
@@ -78,8 +83,11 @@ class User:
 
     decks: List[Deck] = default(list)
 
+    def add_card_to_latest_deck(self):
+        pass
 
-@dataclass(frozen=True)
+
+@dataclass
 class Card:
     name: str
     mana_cost: str
@@ -103,4 +111,4 @@ class Card:
         )
 
 
-state = State.load_or_init("state/bin")
+state = State.load_or_init("state/state.pickle.json")
