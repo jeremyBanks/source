@@ -8,15 +8,16 @@ from time import time
 
 class ChannelPollingBot(object):
     api_root = "https://discordapp.com/api/v6"
-    poll_interval = 10
+    poll_interval = 5
 
     def __init__(self, token: str, channel_id: int):
         self.token: str = token
         self.channel_id: int = channel_id
-        self.last_message_id: int = (int(time() * 1000) - 1420070400000 - 360) << 22
+        self.last_message_id: int = (int(time() * 1000) - 1420070400000 - 360000) << 22
         self.on_message_callbacks: List[Callable[[ChannelPollingBot, Dict], []]] = []
 
     def on_message(self, callback: Callable[[ChannelPollingBot, Dict], []]):
+        print("Adding callback!")
         self.on_message_callbacks.append(callback)
 
     async def run(self) -> NoReturn:
@@ -40,11 +41,10 @@ class ChannelPollingBot(object):
                 response = await discord_client.get(url)
                 content = await response.json()
 
-                print(content)
-
                 for message in content:
                     self.last_message_id = int(message["id"])
-                    self.on_message(message)
+                    for callback in self.on_message_callbacks:
+                        await callback(message)
 
     async def send(self, content=None, embed=None):
         async with aiohttp.ClientSession(
